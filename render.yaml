@@ -1,0 +1,29 @@
+# Render Blueprint — deploys the stateless Django API (no database).
+#
+# Usage: in the Render dashboard, "New +" -> "Blueprint", connect this repo.
+# After the first deploy, set the two dashboard-only vars on the web service:
+#   ORS_API_KEY           your OpenRouteService key
+#   CORS_ALLOWED_ORIGINS  your Vercel frontend URL (e.g. https://your-app.vercel.app)
+
+services:
+  - type: web
+    name: eld-backend
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: "pip install -r requirements.txt && python manage.py collectstatic --no-input"
+    startCommand: "gunicorn config.wsgi:application"
+    healthCheckPath: /api/health/
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.3"
+      - key: SECRET_KEY
+        generateValue: true            # Render generates a strong secret
+      - key: DEBUG
+        value: "False"
+      - key: ALLOWED_HOSTS
+        value: ".onrender.com"          # leading dot allows the *.onrender.com host
+      - key: ORS_API_KEY
+        sync: false                     # set in the dashboard (secret)
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false                     # set to your Vercel URL in the dashboard

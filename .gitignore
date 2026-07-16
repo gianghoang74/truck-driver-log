@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Django
+backend/.env
+backend/staticfiles/
+
+# Assessment reference materials — kept local, never committed
+blank-paper-log.png
+new-full-stack-dev-assessment.docx
+fmcsa-hos-395-drivers-guide-to-hos-2022-04-28-0-1-.pdf
+PLAN.md
+
+# Node / frontend
+node_modules/
+frontend/dist/
+frontend/.env
+*.local
+
+# Editor / OS / tooling
+.~lock.*#
+.DS_Store
+.idea/
+.vscode/
+.claude/
