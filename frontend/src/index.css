@@ -39,6 +39,9 @@ body { margin: 0; background: var(--bg); }
   font-size: 0.95rem; outline: none;
 }
 .field input:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.12); }
+.field input[aria-invalid="true"] { border-color: var(--danger); }
+.field input[aria-invalid="true"]:focus { box-shadow: 0 0 0 3px rgba(185, 28, 28, 0.15); }
+.field-error { font-size: 0.76rem; color: var(--danger); font-weight: 500; }
 .field-hint { position: absolute; right: 10px; top: 32px; font-size: 0.72rem; color: var(--muted); }
 
 .suggestions {
@@ -68,6 +71,19 @@ button[type="submit"]:disabled { opacity: 0.5; cursor: not-allowed; }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
+
+/* blocking full-screen loading overlay — centered, on top, captures all input */
+.loading-overlay {
+  position: fixed; inset: 0; z-index: 3000;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(15, 23, 42, 0.5); backdrop-filter: blur(2px);
+}
+.loading-box {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  background: #fff; padding: 30px 40px; border-radius: 14px;
+  box-shadow: 0 16px 48px rgba(15, 23, 42, 0.3);
+  font-weight: 600; color: var(--ink);
+}
 
 /* summary */
 .summary { display: flex; flex-wrap: wrap; gap: 16px 28px; margin-bottom: 16px; }
@@ -105,12 +121,34 @@ button[type="submit"]:disabled { opacity: 0.5; cursor: not-allowed; }
 .legend-pin { border-radius: 50% 50% 50% 0; transform: rotate(-45deg); }
 
 /* log sheets */
-.logs { display: flex; flex-direction: column; gap: 22px; margin-top: 8px; }
+.logs-head {
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 10px; margin-top: 8px;
+}
+.logs-head h2 { margin: 0; }
+.day-pager { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.pager-day, .pager-arrow {
+  min-width: 34px; height: 34px; padding: 0 8px; border: 1px solid var(--line);
+  border-radius: 8px; background: #fff; color: var(--ink); font-size: 0.9rem;
+  font-weight: 600; cursor: pointer;
+}
+.pager-arrow { font-size: 1.1rem; line-height: 1; }
+.pager-day:hover, .pager-arrow:hover:not(:disabled) { background: #eff6ff; border-color: var(--brand); }
+.pager-day.active { background: var(--brand); border-color: var(--brand); color: #fff; }
+.pager-arrow:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* pagination: only the active day is shown on screen (print shows all) */
+.log-page { display: none; }
+.log-page.active { display: block; }
+
+.logs { margin-top: 12px; }
 .logsheet {
   border: 1px solid var(--line); border-radius: 10px; padding: 16px;
   background: #fff;
 }
-.logsheet-svg { width: 100%; height: auto; margin: 6px 0; }
+.logsheet-scroll { overflow-x: auto; margin: 6px 0; }
+/* min-width keeps the 24h grid readable; on narrow screens it scrolls in-card */
+.logsheet-svg { display: block; width: 100%; min-width: 720px; height: auto; }
 
 /* header fields */
 .log-header {
@@ -153,12 +191,22 @@ button[type="submit"]:disabled { opacity: 0.5; cursor: not-allowed; }
   .log-recap { gap: 6px 14px; }
 }
 
-/* print: one log sheet per page, hide the app chrome */
+/* print: one log sheet per page, hide the app chrome, show every day */
 @media print {
   body { background: #fff; }
-  .app-header, .form-panel, .summary, .map, .result-toolbar { display: none !important; }
+  /* hide all app chrome — incl. the whole map wrapper (map + legend) and the
+     "Daily logs" heading/pager — so only the log sheets print */
+  .app-header, .form-panel, .summary, .map-wrap, .result-toolbar, .logs-head {
+    display: none !important;
+  }
   .layout { display: block; }
   .panel { border: 0; box-shadow: none; padding: 0; }
-  .logsheet { break-inside: avoid; page-break-after: always; border: 1px solid #999; }
-  .logs { gap: 0; }
+  /* one sheet per page; no forced break after the last one (avoids a blank page) */
+  .log-page { display: block !important; page-break-after: always; }
+  .log-page:last-child { page-break-after: auto; }
+  .logsheet { break-inside: avoid; border: 1px solid #999; margin-bottom: 0; }
+  .logs { gap: 0; margin: 0; }
+  /* fit the grid to the page (no scroll/clip in print) */
+  .logsheet-scroll { overflow: visible !important; }
+  .logsheet-svg { min-width: 0 !important; }
 }

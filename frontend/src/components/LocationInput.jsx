@@ -4,7 +4,7 @@ import { autocomplete } from "../api";
 // Debounced type-ahead over the Django geocode proxy (>= 3 chars), with a
 // stale-response guard, in-flight abort, keyboard navigation and ARIA combobox
 // semantics.
-export default function LocationInput({ id, label, value, onChange, placeholder }) {
+export default function LocationInput({ id, label, value, onChange, placeholder, fieldError }) {
   const [suggestions, setSuggestions] = useState([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -108,11 +108,13 @@ export default function LocationInput({ id, label, value, onChange, placeholder 
         autoComplete="off"
         value={value}
         placeholder={placeholder}
+        aria-invalid={fieldError ? "true" : undefined}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={onKeyDown}
         onFocus={() => suggestions.length && setOpen(true)}
       />
       {loading && <span className="field-hint">searching…</span>}
+      {fieldError && <span className="field-error">{fieldError}</span>}
       {open && (suggestions.length > 0 || showEmpty || error) && (
         <ul className="suggestions" id={listId} role="listbox">
           {suggestions.map((s, i) => (

@@ -77,10 +77,11 @@ export default function LogSheet({ day }) {
     const bottom = rowTop(i) + ROW_H;
     for (let m = 15; m < 1440; m += 15) {
       if (m % 60 === 0) continue; // hour lines drawn separately, full height
-      const h = m % 60 === 30 ? TICK_MED : TICK_SHORT;
+      const half = m % 60 === 30;
+      const h = half ? TICK_MED : TICK_SHORT;
       ticks.push(
         <line key={`t${i}-${m}`} x1={xOf(m)} y1={bottom - h} x2={xOf(m)} y2={bottom}
-          stroke="#94a3b8" strokeWidth="0.6" />
+          stroke={half ? "#334155" : "#64748b"} strokeWidth={half ? 1.6 : 1.1} />
       );
     }
   }
@@ -103,7 +104,8 @@ export default function LogSheet({ day }) {
         <Field label="Home Terminal Address" value="" wide />
       </div>
 
-      {/* grid */}
+      {/* grid — scrolls horizontally on narrow screens instead of shrinking */}
+      <div className="logsheet-scroll">
       <svg viewBox={`0 0 ${SVG_W} ${SVG_H}`} className="logsheet-svg" role="img"
         aria-label={`Daily log grid for ${day.date}: off duty ${day.totals.off_duty}h, `
           + `sleeper ${day.totals.sleeper}h, driving ${day.totals.driving}h, `
@@ -125,7 +127,7 @@ export default function LogSheet({ day }) {
         {/* full-height hour lines */}
         {Array.from({ length: 25 }, (_, h) => (
           <line key={`hln${h}`} x1={xOf(h * 60)} y1={GRID_TOP} x2={xOf(h * 60)} y2={GRID_BOTTOM}
-            stroke={h % 6 === 0 ? "#475569" : "#cbd5e1"} strokeWidth={h % 6 === 0 ? 1 : 0.8} />
+            stroke={h % 6 === 0 ? "#1e293b" : "#64748b"} strokeWidth={h % 6 === 0 ? 2 : 1.3} />
         ))}
 
         {/* rows: separators, labels, totals */}
@@ -163,15 +165,16 @@ export default function LogSheet({ day }) {
           return (
             <g key={`rm${i}`}>
               <line x1={x} y1={GRID_BOTTOM} x2={x} y2={GRID_BOTTOM + 20}
-                stroke="#64748b" strokeWidth="0.8" />
-              <text x={x + 2} y={GRID_BOTTOM + 25} fontSize="10.5" fill="#334155"
-                transform={`rotate(60 ${x + 2} ${GRID_BOTTOM + 25})`}>
+                stroke="#334155" strokeWidth="1.2" />
+              <text x={x + 2} y={GRID_BOTTOM + 26} fontSize="13" fontWeight="600" fill="#0f172a"
+                transform={`rotate(60 ${x + 2} ${GRID_BOTTOM + 26})`}>
                 {truncate(r.location || r.note)}
               </text>
             </g>
           );
         })}
       </svg>
+      </div>
 
       {/* recap */}
       <div className="log-recap">
