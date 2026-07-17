@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import TripForm from "./components/TripForm";
 import RouteMap from "./components/RouteMap";
 import LogSheet from "./components/LogSheet";
-import { planTrip } from "./api";
+import { planTrip, health } from "./api";
 import demoPlan from "./demoPlan";
 
 // ?demo=1 seeds a sample plan so the map + logs can be previewed without an API key.
@@ -20,6 +20,17 @@ export default function App() {
     document.body.style.overflow = loading ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [loading]);
+
+  // Keep the free-tier backend warm *while the app is open*: ping /health on load
+  // (so it's awake by the time the user submits) and again below Render's ~15-min
+  // idle-sleep window. Fire-and-forget — failures are ignored. NOTE: this only runs
+  // when a tab is open; for true 24/7 uptime use an external cron/uptime monitor.
+  useEffect(() => {
+    const ping = () => health().catch(() => {});
+    ping();
+    const id = setInterval(ping, 10 * 60 * 1000); // 10 min < Render's 15-min sleep
+    return () => clearInterval(id);
+  }, []);
 
   async function handlePlan(input) {
     setLoading(true);
