@@ -6,7 +6,9 @@ Routing is mocked so no ORS key or network is required.
 
 from unittest.mock import patch
 
+from django.core.cache import cache
 from django.test import SimpleTestCase, override_settings
+from rest_framework.throttling import SimpleRateThrottle
 
 FAKE_COORDS = {
     "Dallas, TX": {"lat": 32.7767, "lng": -96.797, "label": "Dallas, TX"},
@@ -45,6 +47,9 @@ class HealthEndpoint(SimpleTestCase):
 
 
 class PlanEndpoint(SimpleTestCase):
+    def setUp(self):
+        cache.clear()  # reset throttle counters between tests
+
     def _plan(self, payload=VALID_INPUT):
         with patch("api.planner.routing.geocode", side_effect=fake_geocode), \
              patch("api.planner.routing.directions", side_effect=fake_directions):
@@ -82,6 +87,9 @@ class PlanEndpoint(SimpleTestCase):
 
 
 class GeocodeAutocompleteEndpoint(SimpleTestCase):
+    def setUp(self):
+        cache.clear()  # reset throttle counters between tests
+
     def test_short_query_returns_empty(self):
         resp = self.client.get("/api/geocode/autocomplete/?text=Da")
         self.assertEqual(resp.status_code, 200)
@@ -104,3 +112,40 @@ class GeocodeAutocompleteEndpoint(SimpleTestCase):
         with patch("api.views.routing.autocomplete", side_effect=RoutingError("boom")):
             resp = self.client.get("/api/geocode/autocomplete/?text=Dallas")
         self.assertEqual(resp.status_code, 502)
+
+
+# DRF binds SimpleRateThrottle.THROTTLE_RATES as a class attribute at import time,
+# so override_settings(REST_FRAMEWORK=...) can't reach it. Patch the shared rates
+# dict directly (all throttle classes inherit the same object) to tighten rates to
+# 1/min so the second request trips the limit deterministically.
+_TIGHT_RATES = {"plan": "1/min", "geocode": "1/min", "global_ors": "1/min"}
+
+
+class Throttling(SimpleTestCase):
+    def setUp(self):
+        cache.clear()  # start each test with empty throttle buckets
+
+    def test_plan_second_request_is_throttled(self):
+        with patch.dict(SimpleRateThrottle.THROTTLE_RATES, _TIGHT_RATES), \
+             patch("api.planner.routing.geocode", side_effect=fake_geocode), \
+             patch("api.planner.routing.directions", side_effect=fake_directions):
+            first = self.client.post("/api/plan/", VALID_INPUT, content_type="application/json")
+            second = self.client.post("/api/plan/", VALID_INPUT, content_type="application/json")
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(second.status_code, 429)
+
+    def test_geocode_second_request_is_throttled(self):
+        fake = [{"label": "Dallas, TX", "lat": 32.7, "lng": -96.8}]
+        with patch.dict(SimpleRateThrottle.THROTTLE_RATES, _TIGHT_RATES), \
+             patch("api.views.routing.autocomplete", return_value=fake):
+            first = self.client.get("/api/geocode/autocomplete/?text=Dallas")
+            second = self.client.get("/api/geocode/autocomplete/?text=Dallas")
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(second.status_code, 429)
+
+    def test_health_is_never_throttled(self):
+        # The keep-alive ping must not be rate-limited, even at 1/min everywhere.
+        with patch.dict(SimpleRateThrottle.THROTTLE_RATES, _TIGHT_RATES):
+            for _ in range(5):
+                resp = self.client.get("/api/health/")
+                self.assertEqual(resp.status_code, 200)

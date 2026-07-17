@@ -1,5 +1,5 @@
 from rest_framework import status
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, throttle_classes
 from rest_framework.response import Response
 
 import routing
@@ -7,14 +7,17 @@ from routing import RoutingError, RoutingNotConfigured
 
 from .planner import plan_trip
 from .serializers import PlanInputSerializer
+from .throttles import GeocodeRateThrottle, GlobalORSThrottle, PlanRateThrottle
 
 
 @api_view(["GET"])
 def health(request):
+    # Intentionally unthrottled — the frontend keep-alive pings this on a timer.
     return Response({"status": "ok"})
 
 
 @api_view(["POST"])
+@throttle_classes([GlobalORSThrottle, PlanRateThrottle])
 def plan(request):
     """Plan a trip: geocode + route + HOS logs, return the payload (stateless)."""
     serializer = PlanInputSerializer(data=request.data)
@@ -37,6 +40,7 @@ def plan(request):
 
 
 @api_view(["GET"])
+@throttle_classes([GeocodeRateThrottle])
 def geocode_autocomplete(request):
     """Type-ahead proxy for the location inputs."""
     text = request.query_params.get("text", "").strip()

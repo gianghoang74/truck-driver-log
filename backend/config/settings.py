@@ -95,6 +95,15 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [],
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.AllowAny"],
     "UNAUTHENTICATED_USER": None,
+    # Throttle rates. Applied per-view in api/views.py (not globally) so /health
+    # stays unlimited for the keep-alive ping. "plan"/"geocode" are per-IP;
+    # "global_ors" is one shared bucket across all clients (see api/throttles.py),
+    # sized below ORS's per-minute limit. All env-tunable without a code change.
+    "DEFAULT_THROTTLE_RATES": {
+        "plan": os.environ.get("THROTTLE_PLAN", "20/min"),
+        "geocode": os.environ.get("THROTTLE_GEOCODE", "60/min"),
+        "global_ors": os.environ.get("THROTTLE_GLOBAL_ORS", "40/min"),
+    },
 }
 
 # --- CORS -------------------------------------------------------------------
